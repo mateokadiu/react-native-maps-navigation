@@ -2,7 +2,7 @@
   "name": "react-native-maps-navigation",
   "version": "0.0.14",
   "description": "A helper and component library for react-native-maps that enables navigation support",
-  "main": "index.js",
+  "main": "index.ts",
   "repository": {
     "type": "git",
     "url": "https://github.com/flyandi/react-native-maps-navigation.git"
@@ -37,10 +37,11 @@
   "peerDependencies": {
     "react": "*",
     "react-native": "*",
-    "react-native-maps": ">=0.21.0"
+    "react-native-maps": "*"
   },
   "dependencies": {
-    "geolib": "^3.0.2",
+    "@react-native-community/geolocation": "^3.1.0",
+    "geolib": "^3.3.4",
     "prop-types": "^15.6.2",
     "react-native-optiongroup": "^0.0.7"
   },
@@ -48,5 +49,12 @@
     "assets": [
       "./assets/fonts"
     ]
+  },
+  "devDependencies": {
+    "@tsconfig/react-native": "^3.0.2",
+    "@types/jest": "^29.5.5",
+    "@types/react": "^18.2.23",
+    "@types/react-test-renderer": "^18.0.3",
+    "typescript": "^5.2.2"
   }
 }
