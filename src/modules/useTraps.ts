@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { View, Text } from "react-native";
-import * as GeoLib from "geolib";
+import React, { useState } from 'react';
+import { View, Text } from 'react-native';
+import * as GeoLib from 'geolib';
 
-import TrapTypes from "../constants/TrapTypes";
-import { toNameId } from "./Tools";
+import TrapTypes from '../constants/TrapTypes';
+import { toNameId } from './Tools';
 
 const useTraps = ({ instance }: any) => {
   const [traps, setTraps] = useState<any>({});
@@ -28,32 +28,22 @@ const useTraps = ({ instance }: any) => {
    */
   const add = (trap: any, callback: () => any) => {
     setCounter(counter + 1);
+    const newTraps = traps;
 
-    setTraps(
-      traps.map((trapData: any, index: any) => {
-        if (counter === index) {
-          return Object.assign({}, trap, {
-            index: counter,
-            state: TrapTypes.States.OUTSIDE,
-            callback: callback,
-          });
-        }
-        return trap;
-      })
+    newTraps[counter] = Object.assign({}, trap, {
+      index: counter,
+      state: TrapTypes.States.OUTSIDE,
+      callback: callback,
+    });
+    setTraps({ ...traps, ...newTraps });
+
+    Object.keys(TrapTypes.States).forEach(
+      (state) =>
+        (newTraps[counter][toNameId(state, 'is')] = () =>
+          newTraps[counter].state === state)
     );
 
-    setTraps(
-      traps.map((trap: any, index: any) => {
-        if (counter === index) {
-          return Object.keys(TrapTypes.States).forEach(
-            (state) =>
-              (traps[counter][toNameId(state, "is")] = () =>
-                traps[counter].state === state)
-          );
-        }
-        return trap;
-      })
-    );
+    setTraps({ ...traps, ...newTraps });
 
     return traps[counter];
   };
@@ -86,9 +76,9 @@ const useTraps = ({ instance }: any) => {
       options
     );
 
-    const distanceToNextPoint = options.distance || step.distance.value; // in meters
+    const distanceToNextPoint = options?.distance || step?.distance.value; // in meters
 
-    const coordinate = step.start;
+    const coordinate = step?.start;
 
     return add(
       {
@@ -108,7 +98,7 @@ const useTraps = ({ instance }: any) => {
   const __matches = (coordinate: any, heading: any) => {
     const trapKeys = Object.keys(traps);
 
-    return trapKeys.map((index) => {
+    return trapKeys?.map((index) => {
       const trap = traps[index];
 
       if (trap.state != TrapTypes.States.EXPIRED) {
@@ -215,7 +205,7 @@ const useTraps = ({ instance }: any) => {
               }
             }
 
-            break;
+          // break;
         }
       }
     });
@@ -224,24 +214,24 @@ const useTraps = ({ instance }: any) => {
   const nextState = (trap: any, event: any, state: any) => {
     // set new status
     // traps[trap.index].state = state;
-    const newTraps = traps.map((trapData: any) => {
-      if (trapData.index === trap.index) {
-        return { ...trapData, state };
-      }
-      return trapData;
+
+    const newTraps = traps;
+
+    newTraps[trap.index] = Object.assign({}, trap, {
+      state: state,
     });
     setTraps(newTraps);
 
     // resolve with status
-    //TODO!: check this logic
-    if (event.constructor == String) {
+    if (typeof event === 'string') {
       trap.callback && trap.callback(trap, event, state);
     }
   };
 
   const execute = (position: any) => {
-    const { coordinate, heading, altitude } = position;
-    __matches(coordinate, heading);
+    const { latitude, longitude, bearing } = position;
+
+    __matches({ latitude, longitude }, bearing);
   };
 
   return {

@@ -17,8 +17,6 @@ const useDirections = ({ apiKey, options }: any) => {
     destination: any,
     optionsData = false
   ) => {
-    // console.log(origin, destination, optionsData);
-
     options = Object.assign(
       {
         key: apiKey,
@@ -34,11 +32,7 @@ const useDirections = ({ apiKey, options }: any) => {
       ...(optionsData as any),
     };
 
-    console.log(toLatLng(origin));
-
     if (queryParams.mode) queryParams.mode = queryParams.mode.toLowerCase();
-
-    console.log(toQueryParams(queryParams), 'QUERYYYYY PARAMSSSS');
 
     const url = `https://maps.google.com/maps/api/directions/json?key=${apiKey}&${toQueryParams(
       queryParams

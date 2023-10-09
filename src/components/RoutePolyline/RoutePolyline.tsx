@@ -45,7 +45,7 @@ const RoutePolyline = ({
     );
   }
 
-  return components;
+  return <>{components}</>;
 };
 
 export default RoutePolyline;

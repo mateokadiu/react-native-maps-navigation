@@ -1,14 +1,14 @@
 /**
  * @imports
  */
-import { useState } from "react";
-import * as GeoLib from "geolib";
+import { useState } from 'react';
+import * as GeoLib from 'geolib';
 
-const useSimulator = ({ instance }: any) => {
+let pointIndex = 0;
+
+const useSimulator = ({ navRoute, setPosition }: any) => {
   const [turnSpeed, setTurnSpeed] = useState(700);
   const [speed, setSpeed] = useState(30);
-  const [simulatorInstance, setSimulatorInstance] = useState(instance);
-  const [pointIndex, setPointIndex] = useState(0);
   const [points, setPoints] = useState<any[]>([]);
   const [lastBearing, setLastBearing] = useState<any>(null);
 
@@ -16,19 +16,18 @@ const useSimulator = ({ instance }: any) => {
    * start
    * @param route
    */
-  const start = (route: any) => {
-    setPointIndex(0);
-
-    const steps = route.steps;
+  const start = () => {
+    const steps = navRoute?.steps;
 
     let pointsArray: any[] = [];
     let result: any[] = [];
 
-    steps.map((step: any) =>
-      step.polyline.coordinates.map((coordinate: any) =>
-        points.push(Object.assign({}, coordinate))
+    steps.map((step) =>
+      step.polyline.coordinates.map((coordinate) =>
+        pointsArray.push(Object.assign({}, coordinate))
       )
     );
+    setPoints(pointsArray);
 
     pointsArray.forEach((point, index) => {
       const nextPoint = pointsArray[index + 1];
@@ -56,7 +55,7 @@ const useSimulator = ({ instance }: any) => {
       }
     });
 
-    setPointIndex(0);
+    // setPointIndex(0);
     setPoints(result);
     setLastBearing(false);
 
@@ -65,6 +64,10 @@ const useSimulator = ({ instance }: any) => {
 
   const drive = () => {
     const point = points[pointIndex];
+
+    console.log(point, 'POINT');
+
+    pointIndex++;
 
     if (point && point.bearing) {
       let allowPositionUpdate = true;
@@ -75,26 +78,24 @@ const useSimulator = ({ instance }: any) => {
           point.bearing > lastBearing - 10 &&
           point.bearing < lastBearing + 10
         ) {
-          instance.updateBearing(point.bearing, turnSpeed);
+          setPosition(point);
         } else {
           allowPositionUpdate = false;
           setSpeed(turnSpeed);
-          instance.updateBearing(point.bearing, turnSpeed);
+          setPosition(point, speed);
         }
 
         setLastBearing(point.bearing);
       }
 
       if (allowPositionUpdate) {
-        instance.setPosition({
-          ...point,
-          heading: point.bearing,
-        });
-
-        setPointIndex(pointIndex + 1);
+        setPosition(point, speed);
       }
 
-      setTimeout(() => drive(), speed);
+      setTimeout(() => {
+        console.log('DRIVE CALLED');
+        drive();
+      }, 500);
     }
   };
 

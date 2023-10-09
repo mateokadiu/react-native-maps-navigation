@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useImperativeHandle } from 'react';
 import { View, Text, useWindowDimensions } from 'react-native';
-import { Circle, Polygon, Polyline } from 'react-native-maps';
+import MapView, { Circle, Polygon, Polyline } from 'react-native-maps';
 import Geolocation from '@react-native-community/geolocation';
 
 import NavigationModes from '../../constants/NavigationModes';
@@ -10,7 +10,7 @@ import TravelModes from '../../constants/TravelModes';
 import { POSITION_ARROW } from '../../constants/MarkerTypes';
 import PositionMarker from '../PositionMarker/PositionMarker';
 import RoutePolyline from '../RoutePolyline/RoutePolyline';
-import { toArcPolygon } from '../../modules/Tools';
+import { toArcPolygon, toLatLng } from '../../modules/Tools';
 import RouteMarker from '../RouteMarker/RouteMarker';
 import useGeocoder from '../../modules/useGeocoder';
 import useDirections from '../../modules/useDirections';
@@ -19,7 +19,7 @@ import connectTheme from '../../themes';
 interface MapViewNavigationProps {
   apiKey: string;
   language?: string;
-  map?: any;
+  map?: React.MutableRefObject<MapView | null>;
   travelMode?: string;
   maxZoom?: number;
   minZoom?: number;
@@ -46,9 +46,13 @@ interface MapViewNavigationProps {
 
 export type MapViewNavigationRef = {
   navigateRoute: (origin: any, destination: any, options?: boolean) => any;
+  displayRoute: (origin: any, destination: any, options?: any) => Promise<any>;
 };
 
-const MapViewNavigation = React.forwardRef<any, MapViewNavigationProps>(
+const MapViewNavigation = React.forwardRef<
+  MapViewNavigationRef,
+  MapViewNavigationProps
+>(
   (
     {
       origin = false,
@@ -79,8 +83,6 @@ const MapViewNavigation = React.forwardRef<any, MapViewNavigationProps>(
     },
     ref
   ) => {
-    const simulator = useSimulator({ instance: undefined });
-
     let directionsCoder = useDirections({ apiKey, options });
 
     const navTheme = connectTheme(theme);
@@ -121,14 +123,14 @@ const MapViewNavigation = React.forwardRef<any, MapViewNavigationProps>(
     const geoCoder = useGeocoder({ apiKey, options });
 
     const traps = useTraps(props);
-    const [nextStep, setNextStep] = useState();
-    const [stepIndex, setStepIndex] = useState<any>(null);
+    const [nextStep, setNextStep] = useState<any>();
+    const [stepIndex, setStepIndex] = useState<any>(0);
     const [step, setStep] = useState<any>(0);
-    const [route, setRoute] = useState<any>(null);
+    const [navRoute, setNavRoute] = useState<any>(null);
     const [navPosition, setNavPosition] = useState<any>({});
     useEffect(() => {
       const watchId = Geolocation.watchPosition((position: any) => {
-        setPosition(position);
+        if (!simulate) setPosition(position);
       });
 
       return () => Geolocation.clearWatch(watchId);
@@ -139,14 +141,20 @@ const MapViewNavigation = React.forwardRef<any, MapViewNavigationProps>(
      * @param bearing
      * @param duration
      */
-    const updateBearing = (bearing: any, duration = false) => {
-      props
-        .map()
-        .animateToBearing(bearing, duration || props.animationDuration);
+    const updateBearing = (
+      bearing: any,
+      region: any,
+      duration = animationDuration || 500,
+      zoom = 10000
+    ) => {
+      props?.map?.current?.animateCamera(
+        { heading: bearing, center: region, zoom },
+        { duration }
+      );
     };
 
     const clearRoute = () => {
-      setRoute(false);
+      setNavRoute(false);
       setStep(false);
       setStepIndex(false);
     };
@@ -156,27 +164,25 @@ const MapViewNavigation = React.forwardRef<any, MapViewNavigationProps>(
      * @param coordinate
      * @param duration
      */
-    const updatePosition = (coordinate: any, duration = 0) => {
-      props.map().animateToCoordinate(coordinate, duration);
+    const updatePosition = (coordinate: any, duration = 700) => {
+      //@ts-ignore
+      props.map?.current?.animateToRegion(coordinate, duration);
     };
 
     const setPosition = (position: any) => {
-      const { latitude, longitude, heading } = position.coords;
-
+      const { latitude, longitude, bearing } = position;
       position.coordinate = { latitude, longitude };
-
       // process traps on setPosition
-      traps.execute(position);
-
+      // traps.execute(position);
       // update position on map
       if (navigationMode == NavigationModes.NAVIGATION) {
+        updateBearing(bearing, { latitude, longitude });
         updatePosition(position);
-
-        updateBearing(heading);
       }
-
       setNavPosition(position);
     };
+
+    const simulator = useSimulator({ navRoute, setPosition });
 
     const getPositionMarker = (position: any, navigationMode: any) => {
       const type =
@@ -209,11 +215,11 @@ const MapViewNavigation = React.forwardRef<any, MapViewNavigationProps>(
 
       if (!route || !displayDebugMarkers) return result;
 
-      const steps = route.steps;
+      const steps = route?.steps;
 
       let c = 0;
 
-      steps.forEach((step: any, index: number) => {
+      steps?.forEach((step: any, index: number) => {
         const coordinate = step.start;
 
         [
@@ -270,8 +276,8 @@ const MapViewNavigation = React.forwardRef<any, MapViewNavigationProps>(
       options: any = false,
       testForRoute = false
     ) => {
-      if (testForRoute && route) {
-        return Promise.resolve(route);
+      if (testForRoute && navRoute) {
+        return Promise.resolve(navRoute);
       }
       options = Object.assign(
         {},
@@ -285,11 +291,11 @@ const MapViewNavigation = React.forwardRef<any, MapViewNavigationProps>(
           if (routes?.length) {
             const route = routes[0];
 
-            // onRouteChange && onRouteChange(route);
+            onRouteChange && onRouteChange(route);
 
-            // onStepChange && onStepChange(false);
+            onStepChange && onStepChange(false);
 
-            setRoute(route);
+            setNavRoute(route);
             setStep(false);
 
             return Promise.resolve(route);
@@ -345,46 +351,71 @@ const MapViewNavigation = React.forwardRef<any, MapViewNavigationProps>(
             ...route.origin.coordinate,
             ...getZoomValue(props.navigationZoomLevel),
           };
-          console.log(region, 'REGIONNNNNNNNNNNNNNNNNN');
-          // console.log(props.map().current, 'MAPPPPPPPPP');
-          props.map().current?.animateToRegion(region, 1000);
-          // props?.map()?.animateToRegion(region, props.animationDuration);
-          //   props
-          //     .map()
-          //     .animateToViewingAngle(
-          //       props.navigationViewingAngle,
-          //       props.animationDuration
-          //     );
-          //   //updatePosition(route.origin.coordinate);
-          //   updateBearing(route.initialBearing);
-          //   setNavMode(NavigationModes.NAVIGATION);
-          //   updateStep(0);
-          //   props.onNavigationStarted && props.onNavigationStarted();
-          //   if (props.simulate) {
-          //     console.log('SIMULATING ROUTE');
-          //     // simulator = new Simulator(this);
-          //     setTimeout(
-          //       () => simulator.start(route),
-          //       props.animationDuration * 1.5
-          //     );
-          //   } else {
-          //     console.log('NOT SIMULATING');
-          //   }
-          //   return Promise.resolve(route);
+
+          props.map?.current?.animateCamera(
+            {
+              center: region,
+              zoom: 10000,
+              heading: route.initialBearing,
+            },
+            { duration: animationDuration }
+          );
+
+          setNavMode(NavigationModes.NAVIGATION);
+
+          if (navRoute) {
+            console.log(route, 'ROUTEEEEE');
+            updateStep(0, route);
+          }
+          props.onNavigationStarted && props.onNavigationStarted();
+          if (props.simulate) {
+            console.log('SIMULATING ROUTE');
+            simulator.start();
+          } else {
+            console.log('NOT SIMULATING');
+          }
+          return Promise.resolve(route);
         }
       );
     };
 
+    const displayRoute = (
+      origin: any,
+      destination: any,
+      options: any = false
+    ) => {
+      return prepareRoute(origin, destination, options)
+        .then((route: any) => {
+          const region = {
+            ...route.bounds.center,
+            ...getBoundingBoxZoomValue(
+              route.bounds.boundingBox,
+              directionZoomQuantifier
+            ),
+          };
+
+          map?.current?.animateToRegion(region, animationDuration);
+
+          if (navMode == NavigationModes.ROUTE) {
+            setNavMode(NavigationModes.ROUTE);
+          }
+
+          return Promise.resolve(route);
+        })
+        .catch((err: any) => console.log(err));
+    };
+
     useImperativeHandle(ref, () => ({
       navigateRoute,
+      displayRoute,
     }));
 
-    const updateStep = (stepIndex = 0) => {
-      const step = route.steps[stepIndex < 0 ? 0 : stepIndex];
+    const updateStep = (stepIndex = 0, route = navRoute) => {
+      const step = route?.steps[stepIndex < 0 ? 0 : stepIndex];
 
-      const nextStep = route.steps[stepIndex + 1];
+      const nextStep = route?.steps[stepIndex + 1];
 
-      props.onStepChange && props.onStepChange(step, nextStep);
+      props.onStepChange && onStepChange(step, nextStep);
 
       traps.watchStep(
         step,
@@ -398,15 +429,9 @@ const MapViewNavigation = React.forwardRef<any, MapViewNavigationProps>(
         (trap: any, event: any, state: any) => {
           if (!nextStep && trap.isCenter()) {
             props.onNavigationCompleted && props.onNavigationCompleted();
-
-            //   return setState({
-            //     navigationMode: NavigationModes.IDLE,
-            //     stepIndex: false,
-            //   });
             setNavMode(NavigationModes.IDLE);
-            setStepIndex(false);
+            setNextStep(false);
           }
-
           if (trap.isLeaving()) {
             updateStep(stepIndex);
           }
@@ -430,32 +455,6 @@ const MapViewNavigation = React.forwardRef<any, MapViewNavigationProps>(
       };
     };
 
-    const displayRoute = (
-      origin: any,
-      destination: any,
-      options: any = false
-    ) => {
-      return prepareRoute(origin, destination, options)
-        .then((route: any) => {
-          const region = {
-            ...route.bounds.center,
-            ...getBoundingBoxZoomValue(
-              route.bounds.boundingBox,
-              directionZoomQuantifier
-            ),
-          };
-
-          map().animateToRegion(region, animationDuration);
-
-          if (navMode == NavigationModes.ROUTE) {
-            setNavMode(NavigationModes.ROUTE);
-          }
-
-          return Promise.resolve(route);
-        })
-        .catch((err: any) => console.log(err));
-    };
-
     const getRouteMarkers = (route: any) => {
       if (!route || route.markers.constructor !== Array) return null;
 
@@ -464,13 +463,11 @@ const MapViewNavigation = React.forwardRef<any, MapViewNavigationProps>(
       });
     };
 
-    console.log(navPosition);
-
     const result = [
-      getRouteMarkers(route),
-      getRoutePolylines(route),
+      getRouteMarkers(navRoute),
+      getRoutePolylines(navRoute),
       getPositionMarker(navPosition, navMode),
-      getDebugShapes(route),
+      getDebugShapes(navRoute),
     ];
 
     return <>{result}</>;

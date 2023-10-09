@@ -14,7 +14,6 @@ const RouteMarker = ({
   coordinate: any;
 }) => {
   const routeMarkerTheme = connectTheme(theme).Markers[type];
-  console.log(theme, 'THEMMEEEEE');
 
   const styles = Styles(routeMarkerTheme);
   return (
