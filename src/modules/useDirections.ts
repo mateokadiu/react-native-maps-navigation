@@ -25,12 +25,13 @@ const useDirections = ({ apiKey, options }: any) => {
       options,
       optionsData
     );
-
+    
     const queryParams = {
       origin: toLatLng(origin),
       destination: toLatLng(destination),
       ...(optionsData as any),
     };
+
 
     if (queryParams.mode) queryParams.mode = queryParams.mode.toLowerCase();
 

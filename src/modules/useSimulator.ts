@@ -1,21 +1,44 @@
 /**
  * @imports
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as GeoLib from 'geolib';
+import NavigationModes from 'react-native-maps-navigation/src/constants/NavigationModes';
 
 let pointIndex = 0;
+let simulatorNavMode = NavigationModes.IDLE
 
-const useSimulator = ({ navRoute, setPosition }: any) => {
+type useSimuatorType = {
+  navRoute: any;
+  setPosition: any;
+  navigationMode: keyof typeof NavigationModes
+}
+
+
+
+const useSimulator = ({ navRoute, setPosition, navigationMode }: useSimuatorType) => {
   const [turnSpeed, setTurnSpeed] = useState(700);
   const [speed, setSpeed] = useState(30);
   const [points, setPoints] = useState<any[]>([]);
   const [lastBearing, setLastBearing] = useState<any>(null);
 
+  let timeoutId: any = null;
+
+
+  useEffect(()=>{
+    simulatorNavMode = navigationMode;
+
+
+    return () => clearTimeout(timeoutId)
+  },[navigationMode])
+
   /**
    * start
    * @param route
    */
+
+  // console.log('NAV MODE => ', navigationMode)
+
   const start = () => {
     const steps = navRoute?.steps;
 
@@ -27,7 +50,7 @@ const useSimulator = ({ navRoute, setPosition }: any) => {
         pointsArray.push(Object.assign({}, coordinate))
       )
     );
-    setPoints(pointsArray);
+
 
     pointsArray.forEach((point, index) => {
       const nextPoint = pointsArray[index + 1];
@@ -55,7 +78,6 @@ const useSimulator = ({ navRoute, setPosition }: any) => {
       }
     });
 
-    // setPointIndex(0);
     setPoints(result);
     setLastBearing(false);
 
@@ -63,9 +85,8 @@ const useSimulator = ({ navRoute, setPosition }: any) => {
   };
 
   const drive = () => {
-    const point = points[pointIndex];
 
-    console.log(point, 'POINT');
+    const point = points[pointIndex];
 
     pointIndex++;
 
@@ -92,10 +113,15 @@ const useSimulator = ({ navRoute, setPosition }: any) => {
         setPosition(point, speed);
       }
 
-      setTimeout(() => {
-        console.log('DRIVE CALLED');
-        drive();
-      }, 500);
+
+
+      if(simulatorNavMode === NavigationModes.NAVIGATION){
+        timeoutId = setTimeout(() => {
+
+            console.log('DRIVE CALLED');
+            drive();
+          }, 500);
+      }
     }
   };
 

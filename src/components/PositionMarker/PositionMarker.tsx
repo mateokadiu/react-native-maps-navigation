@@ -46,7 +46,7 @@ const PositionMarker = ({
     return (
       <Marker coordinate={coordinate} flat={false}>
         <View style={styles.positionMarkerArrow}>
-          <Text style={styles.positionMarkerText}>{theme.icon}</Text>
+          <Text style={styles.positionMarkerText}></Text>
         </View>
       </Marker>
     );
@@ -55,7 +55,7 @@ const PositionMarker = ({
   const renderDot = (styles: any) => {
     return (
       <Marker coordinate={coordinate} flat={false}>
-        <Text style={styles.positionMarkerText}>{theme.icon}</Text>
+        <Text style={styles.positionMarkerText}></Text>
       </Marker>
     );
   };

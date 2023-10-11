@@ -4,7 +4,7 @@
 import TravelModeBox from "./src/components/TravelModeBox/TravelModelBox";
 import TravelModeLabel from "./src/components/TravelModeLabel/TravelModelLabel";
 import DirectionsListView from "./src/components/DirectionsListView/DirectionsListView";
-import MapViewNavigation from "./src/components/MapViewNavigation/MapViewNavigation";
+import MapViewNavigation, { MapViewNavigationOrigin, MapViewNavigationRef  } from "./src/components/MapViewNavigation/MapViewNavigation";
 import ManeuverView from "./src/components/ManeuverView/ManeuverView";
 import ManeuverArrow from "./src/components/ManeuverArrow/ManeuverArrow";
 import ManeuverLabel from "./src/components/ManeuverLabel/ManeuverLabel";
@@ -16,9 +16,6 @@ import NavigationModes from "./src/constants/NavigationModes";
 
 import useGeocoder from "./src/modules/useGeocoder";
 
-/**
- * @exports
- */
 export {
   DirectionsListView,
   ManeuverView,
@@ -32,6 +29,8 @@ export {
   TravelModeLabel,
   useGeocoder,
   NavigationModes,
+  MapViewNavigationRef,
+  MapViewNavigationOrigin
 };
 
 export default MapViewNavigation;
